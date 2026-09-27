@@ -1,6 +1,7 @@
 package com.example.Job_Scheduler;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 import org.springframework.stereotype.Service;
 
@@ -21,4 +22,37 @@ public class JobService {
         job.setUpdatedAt(now);
         return jobRepository.save(job);
     }
+
+    public List<Job> getAllJobs()
+    {
+        return jobRepository.findAll();
+    }
+
+    public Job getJob(Long id)
+    {
+        return jobRepository.findById(id).get();
+    }
+    
+    public Job updateJob(Long id, Job job)
+    {
+        Job oldJob = jobRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Job not found"));
+
+        oldJob.setName(job.getName());
+        oldJob.setType(job.getType());
+        oldJob.setStatus(job.getStatus());
+        oldJob.setRunAt(job.getRunAt());
+        oldJob.setPayload(job.getPayload());
+        oldJob.setUpdatedAt(LocalDateTime.now());
+
+        return jobRepository.save(oldJob);
+    }
+
+    public Job deleteJob(Long id)
+    {
+        Job job = jobRepository.findById(id).get();
+        jobRepository.deleteById(id);
+        return job;
+    }
+
 }
