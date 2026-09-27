@@ -15,9 +15,10 @@ public class JobService {
 
     public Job createJob(Job job)
     {
+        LocalDateTime now = LocalDateTime.now();
         job.setStatus(JobStatus.PENDING);
-        job.setCreatedAt(LocalDateTime.now());
-        job.setUpdatedAt(LocalDateTime.now());
+        job.setCreatedAt(now);
+        job.setUpdatedAt(now);
         return jobRepository.save(job);
     }
 }
