@@ -28,7 +28,8 @@ public class JobScheduler {
                         now
                 );
 
-        for (Job job : dueJobs)
+        for (Job job : dueJobs){
             jobExecutor.execute(job);
+        }
     }
 }
