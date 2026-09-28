@@ -40,6 +40,15 @@ public class Job {
     @Column(name="updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
+    @Column(name = "error_message", columnDefinition = "TEXT")
+    private String errorMessage;
+
     public Job() {
     }
 
@@ -51,6 +60,9 @@ public class Job {
         this.payload = payload;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.startedAt = null;
+        this.completedAt = null;
+        this.errorMessage = null;
     }
 
     public Long getId() {
@@ -117,4 +129,27 @@ public class Job {
         this.updatedAt = updatedAt;
     }   
     
+    public LocalDateTime getStartedAt() {
+        return startedAt;
+    }
+
+    public void setStartedAt(LocalDateTime startedAt) {
+        this.startedAt = startedAt;
+    }
+
+    public LocalDateTime getCompletedAt() {
+        return completedAt;
+    }
+
+    public void setCompletedAt(LocalDateTime completedAt) {
+        this.completedAt = completedAt;
+    }
+
+    public String getErrorMessage() {
+        return errorMessage;
+    }
+
+    public void setErrorMessage(String errorMessage) {
+        this.errorMessage = errorMessage;
+    }
 }
