@@ -32,6 +32,8 @@ class JobSchedulerIntegrationTest {
         job.setName("Integration Test Job");
         job.setType("EMAIL");
         job.setStatus(JobStatus.PENDING);
+        job.setAttempt(0);
+        job.setMaxAttempts(3);
         job.setRunAt(now.minusMinutes(1));
         job.setPayload("{}");
         job.setCreatedAt(now);

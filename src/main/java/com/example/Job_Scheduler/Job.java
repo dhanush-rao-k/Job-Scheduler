@@ -34,6 +34,12 @@ public class Job {
     @Column(nullable = false)
     private JobStatus status;
 
+    @Column(nullable = false)
+    private int attempt;
+
+    @Column(nullable = false)
+    private int maxAttempts;
+
     @Column(name="run_at", nullable=false)
     private LocalDateTime runAt;
 
@@ -75,6 +81,8 @@ public class Job {
         this.startedAt = null;
         this.completedAt = null;
         this.errorMessage = null;
+        this.attempt = 0;
+        this.maxAttempts = 3;
     }
 
     public Long getId() {
@@ -188,5 +196,21 @@ public class Job {
     public void setExecutionToken(UUID executionToken) {
         this.executionToken = executionToken;
     }
-    
+
+    public int getAttempt() {
+        return attempt;
+    }
+
+    public void setAttempt(int attempt) {
+        this.attempt = attempt;
+    }
+
+    public int getMaxAttempts() {
+        return maxAttempts;
+    }
+
+    public void setMaxAttempts(int maxAttempts) {
+        this.maxAttempts = maxAttempts;
+    }
+
 }

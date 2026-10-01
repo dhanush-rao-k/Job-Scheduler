@@ -14,8 +14,13 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class JobExecutorTest {
 
@@ -24,6 +29,9 @@ class JobExecutorTest {
 
     @Mock
     private JobActionResolver jobActionResolver;
+
+        @Mock
+        private BackoffCalculator backoffCalculator;
 
     @Mock
     private JobAction jobAction;
@@ -55,7 +63,7 @@ class JobExecutorTest {
 
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
-        verify(jobRepository).save(job);
+        verify(jobRepository, times(2)).save(job);
 
         assertThat(job.getStatus())
                 .isEqualTo(JobStatus.COMPLETED);
@@ -87,7 +95,7 @@ class JobExecutorTest {
 
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
-        verify(jobRepository).save(job);
+        verify(jobRepository, times(2)).save(job);
 
         assertThat(job.getStatus())
                 .isEqualTo(JobStatus.FAILED);
@@ -98,4 +106,97 @@ class JobExecutorTest {
         assertThat(job.getCompletedAt())
                 .isNotNull();
     }   
+
+    @Test
+void execute_shouldRetryWhenExecutionFailsAndAttemptsRemain() {
+    Long jobId = 1L;
+    UUID executionToken = UUID.randomUUID();
+
+    Job job = new Job();
+    job.setId(jobId);
+    job.setType("DEFAULT");
+    job.setStatus(JobStatus.RUNNING);
+    job.setAttempt(0);
+    job.setMaxAttempts(3);
+    job.setExecutionToken(executionToken);
+    job.setLeaseUntil(LocalDateTime.now().plusMinutes(5));
+
+    when(jobRepository.findById(jobId))
+            .thenReturn(Optional.of(job));
+
+    JobAction jobAction = mock(JobAction.class);
+
+    when(jobActionResolver.resolve("DEFAULT"))
+            .thenReturn(jobAction);
+
+    when(backoffCalculator.calculateBackoff(1))
+            .thenReturn(5000L);
+
+    doThrow(new RuntimeException("execution failed"))
+            .when(jobAction)
+            .execute(job);
+
+    LocalDateTime before = LocalDateTime.now();
+
+    jobExecutor.execute(jobId, executionToken);
+
+    LocalDateTime after = LocalDateTime.now();
+
+    assertEquals(1, job.getAttempt());
+    assertEquals(JobStatus.PENDING, job.getStatus());
+
+    assertTrue(
+            job.getRunAt().isAfter(before.plusSeconds(4)) &&
+            job.getRunAt().isBefore(after.plusSeconds(11))
+    );
+
+    assertEquals("execution failed", job.getErrorMessage());
+
+    assertNull(job.getExecutionToken());
+    assertNull(job.getLeaseUntil());
+
+    verify(jobAction).execute(job);
+        verify(jobRepository, times(2)).save(job);
+}
+
+@Test
+void execute_shouldMarkJobFailedWhenFinalAttemptFails() {
+    Long jobId = 1L;
+    UUID executionToken = UUID.randomUUID();
+
+    Job job = new Job();
+    job.setId(jobId);
+    job.setType("DEFAULT");
+    job.setStatus(JobStatus.RUNNING);
+    job.setAttempt(2);
+    job.setMaxAttempts(3);
+    job.setExecutionToken(executionToken);
+    job.setLeaseUntil(LocalDateTime.now().plusMinutes(5));
+
+    when(jobRepository.findById(jobId))
+            .thenReturn(Optional.of(job));
+
+    JobAction jobAction = mock(JobAction.class);
+
+    when(jobActionResolver.resolve("DEFAULT"))
+            .thenReturn(jobAction);
+
+    doThrow(new RuntimeException("execution failed"))
+            .when(jobAction)
+            .execute(job);
+
+    jobExecutor.execute(jobId, executionToken);
+
+    assertEquals(3, job.getAttempt());
+    assertEquals(JobStatus.FAILED, job.getStatus());
+
+    assertNotNull(job.getCompletedAt());
+    assertEquals("execution failed", job.getErrorMessage());
+
+    assertNull(job.getExecutionToken());
+    assertNull(job.getLeaseUntil());
+
+    verify(jobAction).execute(job);
+        verify(jobRepository, times(2)).save(job);
+}
 }
