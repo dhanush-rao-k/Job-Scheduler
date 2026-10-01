@@ -8,4 +8,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface JobRepository extends JpaRepository<Job, Long> {
 
     List<Job> findByStatusAndRunAtLessThanEqual(JobStatus status, LocalDateTime time);
+    List<Job> findByStatusAndLeaseUntilBefore(JobStatus status,LocalDateTime time);
 }

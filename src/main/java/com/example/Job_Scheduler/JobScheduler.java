@@ -17,13 +17,15 @@ public class JobScheduler {
     private final JobRepository jobRepository;
     private final JobService jobService;
     private final JobExecutor jobExecutor;
+    private final JobRecoveryService jobRecoveryService;
     private final ExecutorService executor =Executors.newFixedThreadPool(2);
 
-    public JobScheduler(JobRepository jobRepository,JobService jobService,JobExecutor jobExecutor)
+    public JobScheduler(JobRepository jobRepository,JobService jobService,JobExecutor jobExecutor,JobRecoveryService jobRecoveryService)
     {
         this.jobRepository = jobRepository;
         this.jobService = jobService;
         this.jobExecutor = jobExecutor;
+        this.jobRecoveryService = jobRecoveryService;
     }
 
     @Scheduled(fixedRate = 5000)
