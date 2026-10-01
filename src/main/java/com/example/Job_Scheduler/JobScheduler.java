@@ -30,6 +30,7 @@ public class JobScheduler {
 
     @Scheduled(fixedRate = 5000)
     public void findDueJobs() {
+        jobRecoveryService.recoverExpiredJobs();
 
         LocalDateTime now = LocalDateTime.now();
 

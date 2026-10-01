@@ -63,7 +63,7 @@ class JobExecutorTest {
 
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
-        verify(jobRepository, times(2)).save(job);
+        verify(jobRepository).save(job);
 
         assertThat(job.getStatus())
                 .isEqualTo(JobStatus.COMPLETED);
@@ -95,7 +95,7 @@ class JobExecutorTest {
 
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
-        verify(jobRepository, times(2)).save(job);
+        verify(jobRepository).save(job);
 
         assertThat(job.getStatus())
                 .isEqualTo(JobStatus.FAILED);
@@ -130,7 +130,7 @@ void execute_shouldRetryWhenExecutionFailsAndAttemptsRemain() {
             .thenReturn(jobAction);
 
     when(backoffCalculator.calculateBackoff(1))
-            .thenReturn(5000L);
+            .thenReturn(5500L);
 
     doThrow(new RuntimeException("execution failed"))
             .when(jobAction)
@@ -146,8 +146,8 @@ void execute_shouldRetryWhenExecutionFailsAndAttemptsRemain() {
     assertEquals(JobStatus.PENDING, job.getStatus());
 
     assertTrue(
-            job.getRunAt().isAfter(before.plusSeconds(4)) &&
-            job.getRunAt().isBefore(after.plusSeconds(11))
+            job.getRunAt().isAfter(before.plusNanos(5_400_000_000L)) &&
+            job.getRunAt().isBefore(after.plusNanos(5_700_000_000L))
     );
 
     assertEquals("execution failed", job.getErrorMessage());
@@ -156,7 +156,7 @@ void execute_shouldRetryWhenExecutionFailsAndAttemptsRemain() {
     assertNull(job.getLeaseUntil());
 
     verify(jobAction).execute(job);
-        verify(jobRepository, times(2)).save(job);
+        verify(jobRepository).save(job);
 }
 
 @Test
@@ -197,6 +197,6 @@ void execute_shouldMarkJobFailedWhenFinalAttemptFails() {
     assertNull(job.getLeaseUntil());
 
     verify(jobAction).execute(job);
-        verify(jobRepository, times(2)).save(job);
+        verify(jobRepository).save(job);
 }
 }

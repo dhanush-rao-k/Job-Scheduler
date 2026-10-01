@@ -30,6 +30,9 @@ class JobSchedulerTest {
     @Mock
     private JobExecutor jobExecutor;
 
+    @Mock
+    private JobRecoveryService jobRecoveryService;
+
     @InjectMocks
     private JobScheduler jobScheduler;
 
@@ -67,6 +70,7 @@ class JobSchedulerTest {
 
         jobScheduler.findDueJobs();
 
+        verify(jobRecoveryService).recoverExpiredJobs();
         verify(jobExecutor, timeout(1000)).execute(job.getId(), token);
     }
 
@@ -80,6 +84,7 @@ class JobSchedulerTest {
 
         jobScheduler.findDueJobs();
 
+        verify(jobRecoveryService).recoverExpiredJobs();
         verifyNoInteractions(jobExecutor);
     }
 }

@@ -4,7 +4,6 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class JobExecutor {
@@ -19,7 +18,6 @@ public class JobExecutor {
         this.backoffCalculator = backoffCalculator;
     }
 
-    @Transactional
     public void execute(Long jobId, UUID executionToken) {
     Job job = jobRepository.findById(jobId)
             .orElseThrow();
@@ -29,8 +27,6 @@ public class JobExecutor {
     }
 
     job.setAttempt(job.getAttempt() + 1);
-    job.setUpdatedAt(LocalDateTime.now());
-    jobRepository.save(job);
 
     try {
         JobAction jobAction = jobActionResolver.resolve(job.getType());
@@ -48,7 +44,7 @@ public class JobExecutor {
 
             job.setStatus(JobStatus.PENDING);
             job.setRunAt(
-                    LocalDateTime.now().plusSeconds(delayMilliseconds / 1000)
+                    LocalDateTime.now().plusNanos(delayMilliseconds * 1_000_000L)
             );
         } else {
             job.setStatus(JobStatus.FAILED);

@@ -3,18 +3,22 @@ package com.example.Job_Scheduler;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
+import org.junit.jupiter.api.BeforeEach;
 import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@Transactional
 public class JobRepositoryTest {
 
     @Autowired
     private JobRepository jobRepository;
+
+    @BeforeEach
+    void clearJobs() {
+        jobRepository.deleteAll();
+    }
 
     @Test
     void findByStatusAndRunAtLessThanEqual_shouldReturnPendingJobsReadyToRun() {
