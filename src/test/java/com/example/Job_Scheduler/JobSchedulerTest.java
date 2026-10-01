@@ -9,6 +9,7 @@ import static org.mockito.ArgumentMatchers.any;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -55,16 +56,18 @@ class JobSchedulerTest {
         job.setRunAt(now.minusMinutes(1));
         job.setCreatedAt(now);
         job.setUpdatedAt(now);
+        UUID token = UUID.randomUUID();
+        job.setExecutionToken(token);
 
         when(jobRepository.findByStatusAndRunAtLessThanEqual(
             eq(JobStatus.PENDING),
             any(LocalDateTime.class)))
             .thenReturn(List.of(job));
-        when(jobService.claimJob(job.getId())).thenReturn(true);
+        when(jobService.claimJob(job.getId())).thenReturn(token);
 
         jobScheduler.findDueJobs();
 
-        verify(jobExecutor, timeout(1000)).execute(job.getId());
+        verify(jobExecutor, timeout(1000)).execute(job.getId(), token);
     }
 
     @Test

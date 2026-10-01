@@ -1,6 +1,7 @@
 package com.example.Job_Scheduler;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -38,6 +39,12 @@ public class Job {
 
     @Column(columnDefinition="TEXT")    
     private String payload;
+
+    @Column
+    private LocalDateTime leaseUntil;
+
+    @Column
+    private UUID executionToken;
 
     @Column(name="created_at", nullable = false)
     private LocalDateTime createdAt;
@@ -165,4 +172,21 @@ public class Job {
     public void setErrorMessage(String errorMessage) {
         this.errorMessage = errorMessage;
     }
+
+    public LocalDateTime getLeaseUntil() {
+        return leaseUntil;
+    }
+
+    public void setLeaseUntil(LocalDateTime leaseUntil) {
+        this.leaseUntil = leaseUntil;
+    }
+
+    public UUID getExecutionToken() {
+        return executionToken;
+    }
+
+    public void setExecutionToken(UUID executionToken) {
+        this.executionToken = executionToken;
+    }
+    
 }

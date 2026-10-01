@@ -10,6 +10,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.*;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -44,24 +45,24 @@ class JobServiceConcurrencyTest {
 
         CountDownLatch startLatch = new CountDownLatch(1);
 
-        Callable<Boolean> worker = () -> {
+        Callable<UUID> worker = () -> {
             startLatch.await();
             return jobService.claimJob(jobId);
         };
 
-        Future<Boolean> worker1 = executor.submit(worker);
-        Future<Boolean> worker2 = executor.submit(worker);
+        Future<UUID> worker1 = executor.submit(worker);
+        Future<UUID> worker2 = executor.submit(worker);
 
         // Start both workers at approximately the same time
         startLatch.countDown();
 
-        boolean result1 = worker1.get();
-        boolean result2 = worker2.get();
+        UUID result1 = worker1.get();
+        UUID result2 = worker2.get();
 
         executor.shutdown();
 
         // Exactly one worker should successfully claim the job
-        assertThat(result1 ^ result2).isTrue();
+        assertThat((result1 != null) ^ (result2 != null)).isTrue();
 
         Job finalJob = jobRepository.findById(jobId).orElseThrow();
 

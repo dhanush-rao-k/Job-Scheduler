@@ -2,6 +2,7 @@ package com.example.Job_Scheduler;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -16,8 +17,7 @@ public class JobScheduler {
     private final JobRepository jobRepository;
     private final JobService jobService;
     private final JobExecutor jobExecutor;
-    private final ExecutorService executor =
-        Executors.newFixedThreadPool(2);
+    private final ExecutorService executor =Executors.newFixedThreadPool(2);
 
     public JobScheduler(JobRepository jobRepository,JobService jobService,JobExecutor jobExecutor)
     {
@@ -35,9 +35,10 @@ public class JobScheduler {
         List<Job> dueJobs =jobRepository.findByStatusAndRunAtLessThanEqual(JobStatus.PENDING,now);
 
         for (Job job : dueJobs) {
+            UUID executionToken = jobService.claimJob(job.getId());
 
-            if (jobService.claimJob(job.getId())) {
-                executor.submit(() -> jobExecutor.execute(job.getId()));
+            if (executionToken != null) {
+                executor.submit(() -> jobExecutor.execute(job.getId(), executionToken));
             }
         }
     }

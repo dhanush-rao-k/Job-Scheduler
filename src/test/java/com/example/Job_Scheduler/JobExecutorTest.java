@@ -5,6 +5,7 @@ import static org.mockito.Mockito.when;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +42,8 @@ class JobExecutorTest {
         job.setId(1L);
         job.setType("EMAIL");
         job.setStatus(JobStatus.RUNNING);
+        UUID token = UUID.randomUUID();
+        job.setExecutionToken(token);
 
         when(jobRepository.findById(1L))
                 .thenReturn(Optional.of(job));
@@ -48,7 +51,7 @@ class JobExecutorTest {
         when(jobActionResolver.resolve("EMAIL"))
                 .thenReturn(jobAction);
 
-        jobExecutor.execute(1L);
+        jobExecutor.execute(1L, token);
 
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
@@ -67,6 +70,8 @@ class JobExecutorTest {
         job.setId(1L);
         job.setType("EMAIL");
         job.setStatus(JobStatus.RUNNING);
+        UUID token = UUID.randomUUID();
+        job.setExecutionToken(token);
 
         when(jobRepository.findById(1L))
                 .thenReturn(Optional.of(job));
@@ -78,7 +83,7 @@ class JobExecutorTest {
                 .when(jobAction)
                 .execute(job);
 
-        jobExecutor.execute(1L);
+        jobExecutor.execute(1L, token);
 
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);

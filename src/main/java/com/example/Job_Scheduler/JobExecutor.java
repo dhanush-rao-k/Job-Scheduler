@@ -1,6 +1,7 @@
 package com.example.Job_Scheduler;
 
 import java.time.LocalDateTime;
+import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 
@@ -15,9 +16,13 @@ public class JobExecutor {
         this.jobActionResolver = jobActionResolver;
     }
 
-    public void execute(Long jobId) {
+    public void execute(Long jobId, UUID executionToken) {
     Job job = jobRepository.findById(jobId)
             .orElseThrow();
+
+     if (!executionToken.equals(job.getExecutionToken())) {
+        return;
+    }
 
     try {
         JobAction jobAction = jobActionResolver.resolve(job.getType());
