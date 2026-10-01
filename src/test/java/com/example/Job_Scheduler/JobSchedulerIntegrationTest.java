@@ -7,10 +7,11 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.transaction.annotation.Transactional;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 
 @SpringBootTest
-@Transactional
 class JobSchedulerIntegrationTest {
 
     @Autowired
@@ -19,8 +20,11 @@ class JobSchedulerIntegrationTest {
     @Autowired
     private JobRepository jobRepository;
 
+        @PersistenceContext
+        private EntityManager entityManager;
+
     @Test
-    void scheduler_shouldExecuteDueJob() {
+        void scheduler_shouldExecuteDueJob() throws InterruptedException {
 
         LocalDateTime now = LocalDateTime.now();
 
@@ -37,9 +41,18 @@ class JobSchedulerIntegrationTest {
 
         jobScheduler.findDueJobs();
 
-        Job executedJob = jobRepository
-                .findById(savedJob.getId())
-                .orElseThrow();
+        Job executedJob = null;
+        for (int attempt = 0; attempt < 100; attempt++) {
+                        entityManager.clear();
+            executedJob = jobRepository
+                    .findById(savedJob.getId())
+                    .orElseThrow();
+            if (executedJob.getStatus() == JobStatus.COMPLETED
+                    || executedJob.getStatus() == JobStatus.FAILED) {
+                break;
+            }
+            Thread.sleep(10);
+        }
 
         assertThat(executedJob.getStatus())
                 .isEqualTo(JobStatus.COMPLETED);

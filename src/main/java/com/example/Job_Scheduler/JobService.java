@@ -3,15 +3,21 @@ package com.example.Job_Scheduler;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
+
+import jakarta.transaction.Transactional;
 
 @Service
 public class JobService {
     private final JobRepository jobRepository;
 
-    public JobService(JobRepository jobRepository)
+    private final JobClaimService jobClaimService;
+
+    public JobService(JobRepository jobRepository, JobClaimService jobClaimService)
     {
         this.jobRepository=jobRepository;
+        this.jobClaimService=jobClaimService;
     }
 
     public Job createJob(Job job)
@@ -55,4 +61,11 @@ public class JobService {
         return job;
     }
 
+   public boolean claimJob(Long jobId) {
+        try {
+            return jobClaimService.claim(jobId);
+        } catch (ObjectOptimisticLockingFailureException e) {
+            return false;
+        }
+    }
 }

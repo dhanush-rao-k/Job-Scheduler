@@ -3,6 +3,7 @@ package com.example.Job_Scheduler;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.timeout;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.any;
 
@@ -15,10 +16,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import jakarta.annotation.PreDestroy;
+
 class JobSchedulerTest {
 
     @Mock
     private JobRepository jobRepository;
+
+    @Mock
+    private JobService jobService;
 
     @Mock
     private JobExecutor jobExecutor;
@@ -29,6 +35,11 @@ class JobSchedulerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+    }
+
+    @PreDestroy
+    void tearDown() {
+        jobScheduler.shutdown();
     }
 
     @Test
@@ -49,10 +60,11 @@ class JobSchedulerTest {
             eq(JobStatus.PENDING),
             any(LocalDateTime.class)))
             .thenReturn(List.of(job));
+        when(jobService.claimJob(job.getId())).thenReturn(true);
 
         jobScheduler.findDueJobs();
 
-        verify(jobExecutor).execute(job);
+        verify(jobExecutor, timeout(1000)).execute(job.getId());
     }
 
     @Test

@@ -8,40 +8,30 @@ import org.springframework.stereotype.Component;
 public class JobExecutor {
 
     private final JobRepository jobRepository;
-    private final JobAction jobAction;
+    private final JobActionResolver jobActionResolver;
 
-    public JobExecutor(
-            JobRepository jobRepository,
-            JobAction jobAction
-    ) {
+    public JobExecutor(JobRepository jobRepository, JobActionResolver jobActionResolver) {
         this.jobRepository = jobRepository;
-        this.jobAction = jobAction;
+        this.jobActionResolver = jobActionResolver;
     }
 
-    public void execute(Job job) {
+    public void execute(Long jobId) {
+    Job job = jobRepository.findById(jobId)
+            .orElseThrow();
 
-        LocalDateTime startedAt = LocalDateTime.now();
+    try {
+        JobAction jobAction = jobActionResolver.resolve(job.getType());
+        jobAction.execute(job);
 
-        job.setStatus(JobStatus.RUNNING);
-        job.setStartedAt(startedAt);
-        job.setUpdatedAt(startedAt);
-        jobRepository.save(job);
-
-        try {
-
-            jobAction.execute(job);
-
-            job.setStatus(JobStatus.COMPLETED);
-            job.setCompletedAt(LocalDateTime.now());
-
-        } catch (Exception e) {
-
-            job.setStatus(JobStatus.FAILED);
-            job.setCompletedAt(LocalDateTime.now());
-            job.setErrorMessage(e.getMessage());
-        }
-
-        job.setUpdatedAt(LocalDateTime.now());
-        jobRepository.save(job);
+        job.setStatus(JobStatus.COMPLETED);
+        job.setCompletedAt(LocalDateTime.now());
+    } catch (Exception e) {
+        job.setStatus(JobStatus.FAILED);
+        job.setCompletedAt(LocalDateTime.now());
+        job.setErrorMessage(e.getMessage());
     }
+
+    job.setUpdatedAt(LocalDateTime.now());
+    jobRepository.save(job);
+}
 }

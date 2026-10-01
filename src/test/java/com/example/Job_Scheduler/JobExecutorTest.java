@@ -1,7 +1,10 @@
 package com.example.Job_Scheduler;
 
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -9,6 +12,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -16,6 +20,9 @@ class JobExecutorTest {
 
     @Mock
     private JobRepository jobRepository;
+
+    @Mock
+    private JobActionResolver jobActionResolver;
 
     @Mock
     private JobAction jobAction;
@@ -30,50 +37,60 @@ class JobExecutorTest {
 
     @Test
     void execute_shouldMarkJobCompletedWhenExecutionSucceeds() {
-
         Job job = new Job();
         job.setId(1L);
-        job.setName("Test Job");
         job.setType("EMAIL");
-        job.setStatus(JobStatus.PENDING);
-        job.setRunAt(LocalDateTime.now());
-        job.setCreatedAt(LocalDateTime.now());
-        job.setUpdatedAt(LocalDateTime.now());
+        job.setStatus(JobStatus.RUNNING);
 
-        jobExecutor.execute(job);
+        when(jobRepository.findById(1L))
+                .thenReturn(Optional.of(job));
 
-        assertThat(job.getStatus()).isEqualTo(JobStatus.COMPLETED);
-        assertThat(job.getStartedAt()).isNotNull();
-        assertThat(job.getCompletedAt()).isNotNull();
-        assertThat(job.getErrorMessage()).isNull();
+        when(jobActionResolver.resolve("EMAIL"))
+                .thenReturn(jobAction);
 
-        verify(jobRepository, times(2)).save(job);
-    }
+        jobExecutor.execute(1L);
+
+        verify(jobActionResolver).resolve("EMAIL");
+        verify(jobAction).execute(job);
+        verify(jobRepository).save(job);
+
+        assertThat(job.getStatus())
+                .isEqualTo(JobStatus.COMPLETED);
+
+        assertThat(job.getCompletedAt())
+                .isNotNull();
+    }   
 
     @Test
     void execute_shouldMarkJobFailedWhenExecutionFails() {
-
         Job job = new Job();
         job.setId(1L);
-        job.setName("Test Job");
         job.setType("EMAIL");
-        job.setStatus(JobStatus.PENDING);
-        job.setRunAt(LocalDateTime.now());
-        job.setCreatedAt(LocalDateTime.now());
-        job.setUpdatedAt(LocalDateTime.now());
+        job.setStatus(JobStatus.RUNNING);
 
-        org.mockito.Mockito
-            .doThrow(new RuntimeException("Execution failed"))
-            .when(jobAction)
-            .execute(job);
+        when(jobRepository.findById(1L))
+                .thenReturn(Optional.of(job));
 
-        jobExecutor.execute(job);
+        when(jobActionResolver.resolve("EMAIL"))
+                .thenReturn(jobAction);
 
-        assertThat(job.getStatus()).isEqualTo(JobStatus.FAILED);
-        assertThat(job.getStartedAt()).isNotNull();
-        assertThat(job.getCompletedAt()).isNotNull();
-        assertThat(job.getErrorMessage()).isEqualTo("Execution failed");
+        doThrow(new RuntimeException("Execution failed"))
+                .when(jobAction)
+                .execute(job);
 
-        verify(jobRepository, times(2)).save(job);
-    }
+        jobExecutor.execute(1L);
+
+        verify(jobActionResolver).resolve("EMAIL");
+        verify(jobAction).execute(job);
+        verify(jobRepository).save(job);
+
+        assertThat(job.getStatus())
+                .isEqualTo(JobStatus.FAILED);
+
+        assertThat(job.getErrorMessage())
+                .isEqualTo("Execution failed");
+
+        assertThat(job.getCompletedAt())
+                .isNotNull();
+    }   
 }
