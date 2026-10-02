@@ -13,8 +13,10 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -32,6 +34,9 @@ class JobExecutorTest {
 
         @Mock
         private BackoffCalculator backoffCalculator;
+
+        @Mock
+        private IdempotencyService idempotencyService;
 
     @Mock
     private JobAction jobAction;
@@ -59,10 +64,13 @@ class JobExecutorTest {
         when(jobActionResolver.resolve("EMAIL"))
                 .thenReturn(jobAction);
 
+        when(idempotencyService.isCompleted("job-1")).thenReturn(false);
+
         jobExecutor.execute(1L, token);
 
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
+        verify(idempotencyService).complete("job-1");
         verify(jobRepository).save(job);
 
         assertThat(job.getStatus())
@@ -87,6 +95,8 @@ class JobExecutorTest {
         when(jobActionResolver.resolve("EMAIL"))
                 .thenReturn(jobAction);
 
+        when(idempotencyService.isCompleted("job-1")).thenReturn(false);
+
         doThrow(new RuntimeException("Execution failed"))
                 .when(jobAction)
                 .execute(job);
@@ -95,6 +105,7 @@ class JobExecutorTest {
 
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
+        verify(idempotencyService, never()).complete(anyString());
         verify(jobRepository).save(job);
 
         assertThat(job.getStatus())
@@ -129,6 +140,8 @@ void execute_shouldRetryWhenExecutionFailsAndAttemptsRemain() {
     when(jobActionResolver.resolve("DEFAULT"))
             .thenReturn(jobAction);
 
+        when(idempotencyService.isCompleted("job-1")).thenReturn(false);
+
     when(backoffCalculator.calculateBackoff(1))
             .thenReturn(5500L);
 
@@ -156,6 +169,7 @@ void execute_shouldRetryWhenExecutionFailsAndAttemptsRemain() {
     assertNull(job.getLeaseUntil());
 
     verify(jobAction).execute(job);
+                verify(idempotencyService, never()).complete(anyString());
         verify(jobRepository).save(job);
 }
 
@@ -181,6 +195,8 @@ void execute_shouldMarkJobFailedWhenFinalAttemptFails() {
     when(jobActionResolver.resolve("DEFAULT"))
             .thenReturn(jobAction);
 
+        when(idempotencyService.isCompleted("job-1")).thenReturn(false);
+
     doThrow(new RuntimeException("execution failed"))
             .when(jobAction)
             .execute(job);
@@ -197,6 +213,90 @@ void execute_shouldMarkJobFailedWhenFinalAttemptFails() {
     assertNull(job.getLeaseUntil());
 
     verify(jobAction).execute(job);
+                verify(idempotencyService, never()).complete(anyString());
         verify(jobRepository).save(job);
+}
+
+@Test
+void execute_shouldNotExecuteActionAgainWhenAlreadyCompleted() {
+    Job job = new Job();
+    job.setId(1L);
+    job.setExecutionToken(UUID.randomUUID());
+
+    UUID token = job.getExecutionToken();
+
+    when(jobRepository.findById(1L))
+            .thenReturn(Optional.of(job));
+
+    when(idempotencyService.isCompleted("job-1"))
+            .thenReturn(false)
+            .thenReturn(true);
+
+    JobAction jobAction = mock(JobAction.class);
+
+    when(jobActionResolver.resolve(job.getType()))
+            .thenReturn(jobAction);
+
+    // First execution
+    jobExecutor.execute(1L, token);
+
+    // Second execution of the same logical job
+    jobExecutor.execute(1L, token);
+
+    verify(jobAction, times(1)).execute(job);
+}
+
+@Test
+void execute_shouldMarkIdempotencyAsCompletedWhenExecutionSucceeds() {
+    Job job = new Job();
+    job.setId(1L);
+    job.setExecutionToken(UUID.randomUUID());
+
+    UUID token = job.getExecutionToken();
+
+    when(jobRepository.findById(1L))
+            .thenReturn(Optional.of(job));
+
+    when(idempotencyService.isCompleted("job-1"))
+            .thenReturn(false);
+
+    JobAction jobAction = mock(JobAction.class);
+
+    when(jobActionResolver.resolve(job.getType()))
+            .thenReturn(jobAction);
+
+    jobExecutor.execute(1L, token);
+
+    verify(jobAction).execute(job);
+    verify(idempotencyService).complete("job-1");
+}
+
+@Test
+void execute_shouldNotMarkIdempotencyAsCompletedWhenExecutionFails() {
+    Job job = new Job();
+    job.setId(1L);
+    job.setExecutionToken(UUID.randomUUID());
+
+    UUID token = job.getExecutionToken();
+
+    when(jobRepository.findById(1L))
+            .thenReturn(Optional.of(job));
+
+    when(idempotencyService.isCompleted("job-1"))
+            .thenReturn(false);
+
+    JobAction jobAction = mock(JobAction.class);
+
+    when(jobActionResolver.resolve(job.getType()))
+            .thenReturn(jobAction);
+
+    doThrow(new RuntimeException("Execution failed"))
+            .when(jobAction)
+            .execute(job);
+
+    jobExecutor.execute(1L, token);
+
+    verify(jobAction).execute(job);
+    verify(idempotencyService, never()).complete(anyString());
 }
 }

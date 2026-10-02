@@ -11,11 +11,13 @@ public class JobExecutor {
     private final JobRepository jobRepository;
     private final JobActionResolver jobActionResolver;
     private final BackoffCalculator backoffCalculator;
+    private final IdempotencyService idempotencyService;
 
-    public JobExecutor(JobRepository jobRepository, JobActionResolver jobActionResolver, BackoffCalculator backoffCalculator) {
+    public JobExecutor(JobRepository jobRepository, JobActionResolver jobActionResolver, BackoffCalculator backoffCalculator, IdempotencyService idempotencyService) {
         this.jobRepository = jobRepository;
         this.jobActionResolver = jobActionResolver;
         this.backoffCalculator = backoffCalculator;
+        this.idempotencyService = idempotencyService;
     }
 
     public void execute(Long jobId, UUID executionToken) {
@@ -26,11 +28,19 @@ public class JobExecutor {
         return;
     }
 
+    String idempotencyKey = "job-" + job.getId();
+
+    if (idempotencyService.isCompleted(idempotencyKey)) {
+        return;
+    }
+
     job.setAttempt(job.getAttempt() + 1);
 
     try {
         JobAction jobAction = jobActionResolver.resolve(job.getType());
         jobAction.execute(job);
+
+        idempotencyService.complete(idempotencyKey);
 
         job.setStatus(JobStatus.COMPLETED);
         job.setCompletedAt(LocalDateTime.now());

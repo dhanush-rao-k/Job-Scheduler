@@ -7,6 +7,9 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import static org.mockito.Mockito.when;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -19,6 +22,9 @@ class JobSchedulerIntegrationTest {
 
     @Autowired
     private JobRepository jobRepository;
+
+        @MockitoBean
+        private IdempotencyService idempotencyService;
 
         @PersistenceContext
         private EntityManager entityManager;
@@ -40,6 +46,8 @@ class JobSchedulerIntegrationTest {
         job.setUpdatedAt(now);
 
         Job savedJob = jobRepository.save(job);
+        when(idempotencyService.isCompleted("job-" + savedJob.getId()))
+                .thenReturn(false);
 
         jobScheduler.findDueJobs();
 
