@@ -19,6 +19,9 @@ class JobActionResolverTest {
     @Mock
     private HttpJobAction httpJobAction;
 
+    @Mock
+    private WebhookJobAction webhookJobAction;
+
     @Test
     void resolve_shouldReturnHttpActionForHttpType() {
 
@@ -26,12 +29,62 @@ class JobActionResolverTest {
                 new JobActionResolver(
                         defaultJobAction,
                         emailJobAction,
-                        httpJobAction
+                        httpJobAction,
+                        webhookJobAction
                 );
 
         assertSame(
                 httpJobAction,
                 resolver.resolve("HTTP")
+        );
+    }
+    @Test
+void resolve_shouldReturnWebhookActionForWebhookType() {
+
+    JobActionResolver resolver =
+            new JobActionResolver(
+                    defaultJobAction,
+                    emailJobAction,
+                    httpJobAction,
+                    webhookJobAction
+            );
+
+    assertSame(
+            webhookJobAction,
+            resolver.resolve("WEBHOOK")
+    );
+}
+    @Test
+    void resolve_shouldReturnDefaultActionForDefaultType() {
+
+        JobActionResolver resolver =
+                new JobActionResolver(
+                        defaultJobAction,
+                        emailJobAction,
+                        httpJobAction,
+                        webhookJobAction
+                );
+
+        assertSame(
+                defaultJobAction,
+                resolver.resolve("DEFAULT")
+        );
+    }
+
+    @Test
+    void resolve_shouldReturnEmailActionForEmailType() {
+
+        JobActionResolver resolver =
+                new JobActionResolver(
+                        defaultJobAction,
+                        emailJobAction,
+                        httpJobAction,
+                        webhookJobAction
+                );
+
+        assertSame(
+                emailJobAction,
+                resolver.resolve("EMAIL")
         );
     }
 }

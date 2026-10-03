@@ -12,12 +12,14 @@ public class JobActionResolver {
     public JobActionResolver(
             DefaultJobAction defaultJobAction,
             EmailJobAction emailJobAction,
-            HttpJobAction httpJobAction
+            HttpJobAction httpJobAction,
+            WebhookJobAction webhookJobAction
     ) {
         this.actions = Map.of(
                 "DEFAULT", defaultJobAction,
                 "EMAIL", emailJobAction,
-                "HTTP", httpJobAction
+                "HTTP", httpJobAction,
+                "WEBHOOK", webhookJobAction
         );
     }
 
