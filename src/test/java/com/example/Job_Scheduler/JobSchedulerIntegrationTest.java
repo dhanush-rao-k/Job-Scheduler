@@ -41,7 +41,7 @@ class JobSchedulerIntegrationTest {
         job.setAttempt(0);
         job.setMaxAttempts(3);
         job.setRunAt(now.minusMinutes(1));
-        job.setPayload("{}");
+        job.setPayload("{\"to\":[\"user@example.com\"],\"subject\":\"Integration Test\",\"body\":\"Hello from the scheduler integration test\"}");
         job.setCreatedAt(now);
         job.setUpdatedAt(now);
 
