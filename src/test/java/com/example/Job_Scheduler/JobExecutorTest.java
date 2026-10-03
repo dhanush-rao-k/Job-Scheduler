@@ -13,6 +13,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -41,6 +42,9 @@ class JobExecutorTest {
     @Mock
     private JobAction jobAction;
 
+    @Mock
+private JobExecutionService jobExecutionService;
+
     @InjectMocks
     private JobExecutor jobExecutor;
 
@@ -66,12 +70,20 @@ class JobExecutorTest {
 
         when(idempotencyService.isCompleted("job-1")).thenReturn(false);
 
+        JobExecution execution = new JobExecution(1L, 1, ExecutionStatus.RUNNING, LocalDateTime.now());
+        when(jobExecutionService.startExecution(1L, 1)).thenReturn(execution);
+
         jobExecutor.execute(1L, token);
 
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
         verify(idempotencyService).complete("job-1");
         verify(jobRepository).save(job);
+        verify(jobExecutionService)
+        .startExecution(job.getId(), 1);
+
+verify(jobExecutionService)
+        .completeExecution(any(JobExecution.class));
 
         assertThat(job.getStatus())
                 .isEqualTo(JobStatus.COMPLETED);
@@ -97,6 +109,9 @@ class JobExecutorTest {
 
         when(idempotencyService.isCompleted("job-1")).thenReturn(false);
 
+        JobExecution execution = new JobExecution(1L, 1, ExecutionStatus.RUNNING, LocalDateTime.now());
+        when(jobExecutionService.startExecution(1L, 1)).thenReturn(execution);
+
         doThrow(new RuntimeException("Execution failed"))
                 .when(jobAction)
                 .execute(job);
@@ -107,6 +122,14 @@ class JobExecutorTest {
         verify(jobAction).execute(job);
         verify(idempotencyService, never()).complete(anyString());
         verify(jobRepository).save(job);
+        verify(jobExecutionService)
+        .startExecution(job.getId(), 1);
+
+verify(jobExecutionService)
+        .failExecution(
+                any(JobExecution.class),
+                anyString()
+        );
 
         assertThat(job.getStatus())
                 .isEqualTo(JobStatus.FAILED);

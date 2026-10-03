@@ -15,9 +15,11 @@ import org.springframework.web.bind.annotation.PathVariable;
 @RequestMapping("/api/v1/jobs")
 public class JobController {
     private final JobService jobService;
-    public JobController(JobService jobService)
+    private final JobExecutionService jobExecutionService;
+    public JobController(JobService jobService, JobExecutionService jobExecutionService)
     {
         this.jobService=jobService;
+        this.jobExecutionService=jobExecutionService;
     }
     @PostMapping
     public Job createJob(@RequestBody Job job)
@@ -33,6 +35,10 @@ public class JobController {
     public Job getJob(@PathVariable Long id)
     {
         return jobService.getJob(id);
+    }
+    @GetMapping("/{jobId}/executions")
+    public List<JobExecution> getExecutionHistory(@PathVariable Long jobId) {
+        return jobExecutionService.getExecutions(jobId);
     }
     @PutMapping("/{id}")
     public Job updateJob(@PathVariable Long id,@RequestBody Job job)

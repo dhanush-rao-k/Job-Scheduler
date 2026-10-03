@@ -35,6 +35,9 @@ class JobControllerTest {
     @MockitoBean
     private JobService jobService;
 
+    @MockitoBean
+    private JobExecutionService jobExecutionService;
+
     @Autowired
     private ObjectMapper objectMapper;
 
@@ -127,6 +130,27 @@ class JobControllerTest {
         .andExpect(jsonPath("$.length()").value(2))
         .andExpect(jsonPath("$[0].name").value("Test Job 1"))
         .andExpect(jsonPath("$[1].name").value("Test Job 2"));
+    }
+
+    @Test
+    void getExecutionHistory_shouldReturnHistoryForJob() throws Exception {
+        Long jobId = 7L;
+        LocalDateTime startedAt = LocalDateTime.of(2026, 10, 1, 9, 15, 0);
+
+        JobExecution execution = new JobExecution(jobId, 1, ExecutionStatus.COMPLETED, startedAt);
+        execution.setCompletedAt(startedAt.plusMinutes(2));
+
+        when(jobExecutionService.getExecutions(jobId))
+                .thenReturn(List.of(execution));
+
+        mockMvc.perform(
+                get("/api/v1/jobs/{jobId}/executions", jobId)
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(1))
+        .andExpect(jsonPath("$[0].jobId").value(7))
+        .andExpect(jsonPath("$[0].attempt").value(1))
+        .andExpect(jsonPath("$[0].status").value("COMPLETED"));
     }
 
 

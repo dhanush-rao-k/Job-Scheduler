@@ -12,17 +12,18 @@ public class JobExecutor {
     private final JobActionResolver jobActionResolver;
     private final BackoffCalculator backoffCalculator;
     private final IdempotencyService idempotencyService;
+    private final JobExecutionService jobExecutionService;
 
-    public JobExecutor(JobRepository jobRepository, JobActionResolver jobActionResolver, BackoffCalculator backoffCalculator, IdempotencyService idempotencyService) {
+    public JobExecutor(JobRepository jobRepository, JobActionResolver jobActionResolver, BackoffCalculator backoffCalculator, IdempotencyService idempotencyService, JobExecutionService jobExecutionService) {
         this.jobRepository = jobRepository;
         this.jobActionResolver = jobActionResolver;
         this.backoffCalculator = backoffCalculator;
         this.idempotencyService = idempotencyService;
+        this.jobExecutionService = jobExecutionService;
     }
 
     public void execute(Long jobId, UUID executionToken) {
-    Job job = jobRepository.findById(jobId)
-            .orElseThrow();
+    Job job = jobRepository.findById(jobId).orElseThrow();
 
     if (!executionToken.equals(job.getExecutionToken())) {
         return;
@@ -36,8 +37,16 @@ public class JobExecutor {
 
     job.setAttempt(job.getAttempt() + 1);
 
+    JobExecution execution =
+            jobExecutionService.startExecution(
+                    job.getId(),
+                    job.getAttempt()
+            );
+
     try {
-        JobAction jobAction = jobActionResolver.resolve(job.getType());
+        JobAction jobAction =
+                jobActionResolver.resolve(job.getType());
+
         jobAction.execute(job);
 
         idempotencyService.complete(idempotencyKey);
@@ -45,24 +54,40 @@ public class JobExecutor {
         job.setStatus(JobStatus.COMPLETED);
         job.setCompletedAt(LocalDateTime.now());
 
+        jobExecutionService.completeExecution(execution);
+
     } catch (Exception e) {
+
         job.setErrorMessage(e.getMessage());
 
+        jobExecutionService.failExecution(
+                execution,
+                e.getMessage()
+        );
+
         if (job.getAttempt() < job.getMaxAttempts()) {
+
             long delayMilliseconds =
-                    backoffCalculator.calculateBackoff(job.getAttempt());
+                    backoffCalculator.calculateBackoff(
+                            job.getAttempt()
+                    );
 
             job.setStatus(JobStatus.PENDING);
+
             job.setRunAt(
-                    LocalDateTime.now().plusNanos(delayMilliseconds * 1_000_000L)
+                    LocalDateTime.now()
+                            .plusNanos(
+                                    delayMilliseconds * 1_000_000L
+                            )
             );
+
         } else {
+
             job.setStatus(JobStatus.FAILED);
             job.setCompletedAt(LocalDateTime.now());
         }
     }
 
-    // Release ownership of this execution
     job.setExecutionToken(null);
     job.setLeaseUntil(null);
     job.setUpdatedAt(LocalDateTime.now());
