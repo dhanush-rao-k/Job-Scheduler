@@ -7,8 +7,6 @@ import java.util.UUID;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
-import jakarta.transaction.Transactional;
-
 @Service
 public class JobService {
     private final JobRepository jobRepository;

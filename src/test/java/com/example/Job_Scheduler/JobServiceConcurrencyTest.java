@@ -1,9 +1,5 @@
 package com.example.Job_Scheduler;
 
-import com.example.Job_Scheduler.Job;
-import com.example.Job_Scheduler.JobStatus;
-import com.example.Job_Scheduler.JobRepository;
-import com.example.Job_Scheduler.JobService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
