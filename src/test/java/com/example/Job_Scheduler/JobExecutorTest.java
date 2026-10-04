@@ -6,6 +6,7 @@ import static org.mockito.Mockito.when;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ScheduledFuture;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,7 +15,9 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -33,11 +36,17 @@ class JobExecutorTest {
     @Mock
     private JobActionResolver jobActionResolver;
 
-        @Mock
-        private BackoffCalculator backoffCalculator;
+    @Mock
+    private BackoffCalculator backoffCalculator;
 
-        @Mock
-        private IdempotencyService idempotencyService;
+    @Mock
+    private IdempotencyService idempotencyService;
+
+    @Mock
+    private JobLeaseService jobLeaseService;
+
+    @Mock
+    private ScheduledFuture<?> leaseRenewal;
 
     @Mock
     private JobAction jobAction;
@@ -51,6 +60,9 @@ private JobExecutionService jobExecutionService;
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        doReturn((ScheduledFuture<?>) leaseRenewal)
+                .when(jobLeaseService)
+                .startRenewal(anyLong(), any(UUID.class));
     }
 
     @Test

@@ -2,6 +2,7 @@ package com.example.Job_Scheduler;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.util.concurrent.ScheduledFuture;
 
 import org.springframework.stereotype.Component;
 
@@ -13,13 +14,15 @@ public class JobExecutor {
     private final BackoffCalculator backoffCalculator;
     private final IdempotencyService idempotencyService;
     private final JobExecutionService jobExecutionService;
+    private final JobLeaseService jobLeaseService;
 
-    public JobExecutor(JobRepository jobRepository, JobActionResolver jobActionResolver, BackoffCalculator backoffCalculator, IdempotencyService idempotencyService, JobExecutionService jobExecutionService) {
+    public JobExecutor(JobRepository jobRepository, JobActionResolver jobActionResolver, BackoffCalculator backoffCalculator, IdempotencyService idempotencyService, JobExecutionService jobExecutionService , JobLeaseService jobLeaseService) {
         this.jobRepository = jobRepository;
         this.jobActionResolver = jobActionResolver;
         this.backoffCalculator = backoffCalculator;
         this.idempotencyService = idempotencyService;
         this.jobExecutionService = jobExecutionService;
+        this.jobLeaseService = jobLeaseService;
     }
 
     public void execute(Long jobId, UUID executionToken) {
@@ -42,6 +45,8 @@ public class JobExecutor {
                     job.getId(),
                     job.getAttempt()
             );
+
+    ScheduledFuture<?> leaseRenewal = jobLeaseService.startRenewal(job.getId(), executionToken);
 
     try {
         JobAction jobAction =
@@ -86,12 +91,13 @@ public class JobExecutor {
             job.setStatus(JobStatus.FAILED);
             job.setCompletedAt(LocalDateTime.now());
         }
-    }
-
-    job.setExecutionToken(null);
+    }finally{
+        leaseRenewal.cancel(true);
+        job.setExecutionToken(null);
     job.setLeaseUntil(null);
     job.setUpdatedAt(LocalDateTime.now());
 
     jobRepository.save(job);
+    }
 }
 }
