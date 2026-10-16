@@ -44,19 +44,20 @@ class JobServiceConcurrencyTest {
 
         CountDownLatch startLatch = new CountDownLatch(1);
 
-        Callable<UUID> worker = () -> {
-            startLatch.await();
-            return jobService.claimJob(jobId);
-        };
+        Callable<JobClaimService.ClaimedJob> worker = () -> {
+        startLatch.await();
+        return jobService.claimNextJob();
+    };
 
-        Future<UUID> worker1 = executor.submit(worker);
-        Future<UUID> worker2 = executor.submit(worker);
+        Future<JobClaimService.ClaimedJob> worker1 = executor.submit(worker);
+        Future<JobClaimService.ClaimedJob> worker2 = executor.submit(worker);
 
         // Start both workers at approximately the same time
         startLatch.countDown();
 
-        UUID result1 = worker1.get();
-        UUID result2 = worker2.get();
+
+        JobClaimService.ClaimedJob result1 = worker1.get();
+        JobClaimService.ClaimedJob result2 = worker2.get(3, TimeUnit.SECONDS);
 
         executor.shutdown();
 

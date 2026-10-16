@@ -1,16 +1,17 @@
 package com.example.Job_Scheduler.service;
 
-import com.example.Job_Scheduler.model.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.timeout;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.any;
-
-import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.times;
+import static org.mockito.ArgumentMatchers.any;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,5 +70,39 @@ class JobSchedulerTest {
         verify(jobRecoveryService).recoverExpiredJobs();
         verifyNoInteractions(jobExecutor);
     }
+
+    
+    @Test
+    void findDueJobs_shouldNotClaimMoreJobsThanAvailableSlots()
+            throws InterruptedException {
+
+        CountDownLatch started = new CountDownLatch(2);
+        CountDownLatch release = new CountDownLatch(1);
+
+        when(jobService.claimNextJob())
+                .thenReturn(new JobClaimService.ClaimedJob(1L, UUID.randomUUID()))
+                .thenReturn(new JobClaimService.ClaimedJob(2L, UUID.randomUUID()))
+                .thenReturn(new JobClaimService.ClaimedJob(3L, UUID.randomUUID()));
+
+        doAnswer(invocation -> {
+            started.countDown();
+            release.await(3, TimeUnit.SECONDS);
+            return null;
+        }).when(jobExecutor).execute(any(Long.class), any(UUID.class));
+
+        try {
+            jobScheduler.findDueJobs();
+
+            assertTrue(
+                    started.await(2, TimeUnit.SECONDS),
+                    "Both execution slots should start"
+            );
+
+            verify(jobService, times(2)).claimNextJob();
+        } finally {
+            release.countDown();
+        }
+    }
+
 }
 

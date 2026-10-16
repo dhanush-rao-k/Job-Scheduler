@@ -6,7 +6,6 @@ import com.example.Job_Scheduler.service.JobClaimService.ClaimedJob;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
@@ -70,9 +69,4 @@ public class JobService {
         return null;
     }
 }
-
-    public UUID claimJob(Long jobId) {
-        ClaimedJob claimedJob = claimNextJob();
-        return claimedJob == null ? null : claimedJob.executionToken();
-    }
 }
