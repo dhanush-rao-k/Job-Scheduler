@@ -1,7 +1,5 @@
 package com.example.Job_Scheduler.service;
 
-import com.example.Job_Scheduler.model.*;
-
 import static org.junit.jupiter.api.Assertions.assertSame;
 
 import org.junit.jupiter.api.Test;
