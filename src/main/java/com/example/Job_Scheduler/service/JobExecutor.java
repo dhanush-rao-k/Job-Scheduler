@@ -94,13 +94,31 @@ public class JobExecutor {
             job.setStatus(JobStatus.FAILED);
             job.setCompletedAt(LocalDateTime.now());
         }
-    }finally{
-        leaseRenewal.cancel(true);
-        job.setExecutionToken(null);
-    job.setLeaseUntil(null);
-    job.setUpdatedAt(LocalDateTime.now());
+    }finally {
+    leaseRenewal.cancel(true);
 
-    jobRepository.save(job);
+    LocalDateTime now = LocalDateTime.now();
+
+    job.setExecutionToken(null);
+    job.setLeaseUntil(null);
+
+    int updated = jobRepository.finishOwnedExecution(
+            jobId,
+            executionToken,
+            JobStatus.RUNNING,
+            job.getStatus(),
+            job.getAttempt(),
+            job.getRunAt(),
+            job.getCompletedAt(),
+            job.getErrorMessage(),
+            now
+    );
+
+    if (updated == 0) {
+        // This worker no longer owns the job.
+        // Do not overwrite the current owner's state.
+        return;
     }
+}
 }
 }

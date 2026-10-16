@@ -20,6 +20,7 @@ import org.mockito.MockitoAnnotations;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -93,7 +94,9 @@ private JobExecutionService jobExecutionService;
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
         verify(idempotencyService).complete("job-1");
-        verify(jobRepository).save(job);
+        verify(jobRepository).finishOwnedExecution(
+                eq(1L), eq(token), eq(JobStatus.RUNNING), eq(JobStatus.COMPLETED),
+                eq(1), eq(null), any(), eq(null), any());
         verify(jobExecutionService)
         .startExecution(job.getId(), 1);
 
@@ -136,7 +139,9 @@ verify(jobExecutionService)
         verify(jobActionResolver).resolve("EMAIL");
         verify(jobAction).execute(job);
         verify(idempotencyService, never()).complete(anyString());
-        verify(jobRepository).save(job);
+        verify(jobRepository).finishOwnedExecution(
+                eq(1L), eq(token), eq(JobStatus.RUNNING), eq(JobStatus.FAILED),
+                eq(1), eq(null), any(), eq("Execution failed"), any());
         verify(jobExecutionService)
         .startExecution(job.getId(), 1);
 
@@ -208,7 +213,9 @@ void execute_shouldRetryWhenExecutionFailsAndAttemptsRemain() {
 
     verify(jobAction).execute(job);
                 verify(idempotencyService, never()).complete(anyString());
-        verify(jobRepository).save(job);
+                verify(jobRepository).finishOwnedExecution(
+                        eq(jobId), eq(executionToken), eq(JobStatus.RUNNING), eq(JobStatus.PENDING),
+                        eq(1), any(), eq(null), eq("execution failed"), any());
 }
 
 @Test
@@ -252,7 +259,9 @@ void execute_shouldMarkJobFailedWhenFinalAttemptFails() {
 
     verify(jobAction).execute(job);
                 verify(idempotencyService, never()).complete(anyString());
-        verify(jobRepository).save(job);
+                verify(jobRepository).finishOwnedExecution(
+                        eq(jobId), eq(executionToken), eq(JobStatus.RUNNING), eq(JobStatus.FAILED),
+                        eq(3), eq(null), any(), eq("execution failed"), any());
 }
 
 @Test

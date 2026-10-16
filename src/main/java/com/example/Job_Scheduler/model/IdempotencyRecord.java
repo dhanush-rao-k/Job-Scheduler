@@ -1,4 +1,4 @@
-package com.example.Job_Scheduler.service;
+package com.example.Job_Scheduler.model;
 
 import jakarta.persistence.*;
 
