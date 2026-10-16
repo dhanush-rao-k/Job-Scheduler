@@ -2,11 +2,11 @@ package com.example.Job_Scheduler.service;
 
 import com.example.Job_Scheduler.model.*;
 import com.example.Job_Scheduler.repo.*;
+import com.example.Job_Scheduler.service.JobClaimService.ClaimedJob;
 
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
-
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
 
@@ -63,11 +63,16 @@ public class JobService {
         return job;
     }
 
-   public UUID claimJob(Long jobId) {
-        try {
-            return jobClaimService.claim(jobId);
-        } catch (ObjectOptimisticLockingFailureException e) {
-            return null;
-        }
+   public ClaimedJob claimNextJob() {
+    try {
+        return jobClaimService.claimNextJob().orElse(null);
+    } catch (ObjectOptimisticLockingFailureException e) {
+        return null;
+    }
+}
+
+    public UUID claimJob(Long jobId) {
+        ClaimedJob claimedJob = claimNextJob();
+        return claimedJob == null ? null : claimedJob.executionToken();
     }
 }

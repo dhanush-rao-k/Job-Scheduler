@@ -1,3 +1,4 @@
+
 package com.example.Job_Scheduler.service;
 
 import com.example.Job_Scheduler.model.*;
@@ -7,6 +8,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -20,25 +22,31 @@ public class JobClaimService {
     }
 
     @Transactional
-    public UUID claim(Long jobId) {
+    public Optional<ClaimedJob> claimNextJob() {
+        LocalDateTime now = LocalDateTime.now();
 
-        Job job = jobRepository.findById(jobId)
-                .orElseThrow();
+        Optional<Job> candidate =
+                jobRepository.findNextDueJobForUpdateSkipLocked(now);
 
-        if (job.getStatus() != JobStatus.PENDING) {
-            return  null;
+        if (candidate.isEmpty()) {
+            return Optional.empty();
         }
 
-        LocalDateTime now = LocalDateTime.now();
+        Job job = candidate.get();
+        UUID executionToken = UUID.randomUUID();
 
         job.setStatus(JobStatus.RUNNING);
         job.setStartedAt(now);
         job.setUpdatedAt(now);
         job.setLeaseUntil(now.plusMinutes(LEASE_MINUTES));
-        job.setExecutionToken(UUID.randomUUID());
+        job.setExecutionToken(executionToken);
 
         jobRepository.saveAndFlush(job);
 
-        return job.getExecutionToken();
+        return Optional.of(
+                new ClaimedJob(job.getId(), executionToken)
+        );
     }
+
+    public record ClaimedJob(Long jobId, UUID executionToken) {}
 }

@@ -1,8 +1,6 @@
 package com.example.Job_Scheduler.service;
 
 import com.example.Job_Scheduler.model.*;
-import com.example.Job_Scheduler.repo.*;
-
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -23,9 +21,6 @@ import org.mockito.MockitoAnnotations;
 import jakarta.annotation.PreDestroy;
 
 class JobSchedulerTest {
-
-    @Mock
-    private JobRepository jobRepository;
 
     @Mock
     private JobService jobService;
@@ -52,38 +47,22 @@ class JobSchedulerTest {
     @Test
     void findDueJobs_shouldSendDueJobsToExecutor() {
 
-        LocalDateTime now = LocalDateTime.now();
-
-        Job job = new Job();
-        job.setId(1L);
-        job.setName("Test Job");
-        job.setType("EMAIL");
-        job.setStatus(JobStatus.PENDING);
-        job.setRunAt(now.minusMinutes(1));
-        job.setCreatedAt(now);
-        job.setUpdatedAt(now);
+        Long jobId = 1L;
         UUID token = UUID.randomUUID();
-        job.setExecutionToken(token);
-
-        when(jobRepository.findByStatusAndRunAtLessThanEqual(
-            eq(JobStatus.PENDING),
-            any(LocalDateTime.class)))
-            .thenReturn(List.of(job));
-        when(jobService.claimJob(job.getId())).thenReturn(token);
+        when(jobService.claimNextJob())
+                .thenReturn(new JobClaimService.ClaimedJob(jobId, token))
+                .thenReturn(null);
 
         jobScheduler.findDueJobs();
 
         verify(jobRecoveryService).recoverExpiredJobs();
-        verify(jobExecutor, timeout(1000)).execute(job.getId(), token);
+        verify(jobExecutor, timeout(1000)).execute(jobId, token);
     }
 
     @Test
     void findDueJobs_shouldNotExecuteAnythingWhenNoJobsAreDue() {
 
-        when(jobRepository.findByStatusAndRunAtLessThanEqual(
-                eq(JobStatus.PENDING),
-                any(LocalDateTime.class)))
-                .thenReturn(List.of());
+        when(jobService.claimNextJob()).thenReturn(null);
 
         jobScheduler.findDueJobs();
 
