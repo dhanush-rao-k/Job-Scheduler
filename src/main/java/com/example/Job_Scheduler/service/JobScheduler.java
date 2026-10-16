@@ -83,5 +83,14 @@ public class JobScheduler {
     @PreDestroy
     public void shutdown() {
         executor.shutdown();
+
+        try {
+            if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 }

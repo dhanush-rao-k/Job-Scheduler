@@ -37,4 +37,7 @@ jobs:
           cache: maven
 
       - name: Build
+        env:
+          DB_USERNAME: postgres
+          DB_PASSWORD: postgres
         run: ./mvnw clean verify

@@ -89,7 +89,9 @@ class JobExecutorLeaseIntegrationTest {
                 .orElseThrow();
 
         assertThat(completedJob.getStatus())
-                .isEqualTo(JobStatus.COMPLETED);
+        .as("Job status; persisted error message: %s",
+                completedJob.getErrorMessage())
+        .isEqualTo(JobStatus.COMPLETED);
         assertThat(completedJob.getExecutionToken()).isNull();
         assertThat(completedJob.getLeaseUntil()).isNull();
         assertThat(completedJob.getCompletedAt()).isNotNull();
