@@ -9,8 +9,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 
 import java.time.LocalDateTime;
 import java.util.concurrent.*;
-import java.util.UUID;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
@@ -30,7 +28,7 @@ class JobServiceConcurrencyTest {
         job.setName("Concurrent Job");
         job.setType("TEST");
         job.setStatus(JobStatus.PENDING);
-        job.setRunAt(LocalDateTime.now());
+        job.setRunAt(LocalDateTime.of(2000, 1, 1, 0, 0));
         job.setPayload("{}");
         job.setCreatedAt(LocalDateTime.now());
         job.setUpdatedAt(LocalDateTime.now());
@@ -62,7 +60,11 @@ class JobServiceConcurrencyTest {
         executor.shutdown();
 
         // Exactly one worker should successfully claim the job
-        assertThat((result1 != null) ^ (result2 != null)).isTrue();
+        long targetClaims =
+        (result1 != null && jobId.equals(result1.jobId()) ? 1 : 0)
+        + (result2 != null && jobId.equals(result2.jobId()) ? 1 : 0);
+
+        assertThat(targetClaims).isEqualTo(1);
 
         Job finalJob = jobRepository.findById(jobId).orElseThrow();
 
