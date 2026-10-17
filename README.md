@@ -8,6 +8,7 @@ A Spring Boot job scheduling service backed by PostgreSQL. The project focuses o
 - **Spring Boot**
 - **Spring Data JPA / Hibernate**
 - **PostgreSQL 16**
+- **Apache Kafka 4**
 - **Maven**
 - **JUnit 5, Mockito, Spring Boot Test**
 - **GitHub Actions**
@@ -42,6 +43,7 @@ PostgreSQL remains the source of truth for job state.
 
 - JDK 21
 - PostgreSQL 16 or a compatible PostgreSQL installation
+- Docker Desktop with Docker Compose
 - Git
 
 ## Configuration
@@ -52,6 +54,7 @@ The application reads its database settings from environment variables, with loc
 |---|---|---|
 | `DB_USERNAME` | `postgres` | Database username |
 | `DB_PASSWORD` | `postgres` | Database password |
+| `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker address |
 
 The JDBC URL defaults to:
 
@@ -60,6 +63,10 @@ The JDBC URL defaults to:
 Create the `job_scheduler` database in PostgreSQL before starting the application.
 
 For local development, the defaults work when your local PostgreSQL instance uses the same credentials. For other environments, set `DB_USERNAME` and `DB_PASSWORD` before launching the application.
+
+The included Compose setup exposes Kafka to applications running on the host at
+`localhost:9092`. If the application is later run as a Compose service, set
+`KAFKA_BOOTSTRAP_SERVERS=kafka:29092` so it uses Kafka's internal listener.
 
 **PowerShell example:**
 
@@ -79,7 +86,19 @@ git clone https://github.com/dhanush-rao-k/Job-Scheduler.git
 cd Job-Scheduler
 ```
 
-Configure PostgreSQL and the environment variables, then run:
+Start PostgreSQL and Kafka with Docker Compose:
+
+```powershell
+docker compose up -d postgres kafka
+```
+
+Verify that Kafka is reachable:
+
+```powershell
+docker compose exec kafka /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list
+```
+
+Configure the database and Kafka environment variables if needed, then run:
 
 ```powershell
 .\mvnw spring-boot:run
