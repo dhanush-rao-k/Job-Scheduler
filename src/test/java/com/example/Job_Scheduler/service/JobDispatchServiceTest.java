@@ -47,8 +47,8 @@ class JobDispatchServiceTest {
 
     @BeforeEach
     void clearData() {
-        outboxEventRepository.deleteAll();
-        jobRepository.deleteAll();
+        outboxEventRepository.deleteAllInBatch();
+        jobRepository.deleteAllInBatch();
     }
 
     @Test
