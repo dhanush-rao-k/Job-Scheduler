@@ -60,6 +60,9 @@ The application reads its database settings from environment variables, with loc
 | `DB_USERNAME` | `postgres` | Database username |
 | `DB_PASSWORD` | `postgres` | Database password |
 | `KAFKA_BOOTSTRAP_SERVERS` | `localhost:9092` | Kafka broker address |
+| `KAFKA_CONSUMER_GROUP` | `job-scheduler` | Shared Kafka consumer group for worker instances |
+| `KAFKA_CONSUMER_CONCURRENCY` | `2` | Listener concurrency per application instance |
+| `SERVER_PORT` | `8080` | HTTP port for the application instance |
 
 The JDBC URL defaults to:
 
@@ -73,6 +76,22 @@ The included Compose setup exposes Kafka to applications running on the host at
 `localhost:9092`. If the application is later run as a Compose service, set
 `KAFKA_BOOTSTRAP_SERVERS=kafka:29092` so it uses Kafka's internal listener.
 
+## Reliability guarantees and limitations
+
+PostgreSQL is the coordination authority. A dispatched job can have at most one
+concurrent database owner because claims use row locking and a status predicate.
+Execution tokens and conditional completion prevent a stale owner from changing
+the replacement owner's state. Duplicate dispatch messages for running or
+completed jobs are acknowledged without creating another execution.
+
+The transactional outbox provides at-least-once publication: a broker failure
+leaves the event pending and retryable. A publisher crash after Kafka accepts a
+message but before the database status update can publish that event again.
+Downstream job claiming makes duplicate dispatch safe, but external actions such
+as HTTP requests, email, or webhooks are not a universal exactly-once guarantee.
+Those actions must provide their own idempotency or accept possible repetition
+when a worker fails after the external side effect.
+
 **PowerShell example:**
 
 ```powershell
@@ -81,6 +100,15 @@ $env:DB_PASSWORD = "your-local-password"
 ```
 
 Use appropriate credentials for your environment. Do not commit real secrets to version control.
+
+PostgreSQL rejects the legacy `Asia/Calcutta` connection time zone used by some
+local JVM installations. Run Maven with UTC when the local default time zone is
+not accepted by PostgreSQL:
+
+```powershell
+$env:JAVA_TOOL_OPTIONS = "-Duser.timezone=UTC"
+.\mvnw.cmd clean verify
+```
 
 ## Running Locally
 
@@ -118,6 +146,31 @@ Run the complete verification lifecycle:
 ```
 
 The GitHub Actions workflow provisions a PostgreSQL 16 service and runs the same Maven verification command on pushes and pull requests targeting `main`.
+
+## Running two worker instances
+
+Keep the shared PostgreSQL and Kafka services running, then start two application
+processes with different HTTP ports and the same Kafka consumer group:
+
+```powershell
+$env:SERVER_PORT = "8081"
+$env:KAFKA_CONSUMER_GROUP = "job-scheduler"
+.\mvnw.cmd spring-boot:run
+```
+
+In a second PowerShell window:
+
+```powershell
+$env:SERVER_PORT = "8082"
+$env:KAFKA_CONSUMER_GROUP = "job-scheduler"
+.\mvnw.cmd spring-boot:run
+```
+
+Submit jobs through either HTTP port. Both instances may claim work, while
+PostgreSQL prevents concurrent ownership. If one process stops after claiming a
+job, the other instance's recovery scheduler can reclaim it after the lease
+expires. This setup uses no additional service and does not require deleting
+Docker volumes.
 
 ## Project Status
 

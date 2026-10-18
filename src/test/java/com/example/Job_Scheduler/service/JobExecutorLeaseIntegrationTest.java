@@ -5,6 +5,7 @@ import com.example.Job_Scheduler.model.Job;
 import com.example.Job_Scheduler.model.JobAction;
 import com.example.Job_Scheduler.model.JobStatus;
 import com.example.Job_Scheduler.repo.JobRepository;
+import com.example.Job_Scheduler.repo.JobExecutionRepository;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -30,7 +31,16 @@ class JobExecutorLeaseIntegrationTest {
     private JobRepository jobRepository;
 
     @Autowired
+    private JobExecutionRepository jobExecutionRepository;
+
+    @Autowired
     private JobExecutor jobExecutor;
+
+    @Autowired
+    private JobClaimService jobClaimService;
+
+    @Autowired
+    private JobRecoveryService jobRecoveryService;
 
     @Autowired
     private JobLeaseService jobLeaseService;
@@ -95,5 +105,49 @@ class JobExecutorLeaseIntegrationTest {
         assertThat(completedJob.getExecutionToken()).isNull();
         assertThat(completedJob.getLeaseUntil()).isNull();
         assertThat(completedJob.getCompletedAt()).isNotNull();
+    }
+
+    @Test
+    void expiredClaimCanBeRecoveredAndStaleWorkerCannotCompleteNewOwnership() {
+        LocalDateTime now = LocalDateTime.now();
+        UUID staleToken = UUID.randomUUID();
+
+        Job job = new Job();
+        job.setName("Stale ownership recovery test");
+        job.setType("DEFAULT");
+        job.setStatus(JobStatus.RUNNING);
+        job.setAttempt(0);
+        job.setMaxAttempts(3);
+        job.setRunAt(now.minusMinutes(1));
+        job.setLeaseUntil(now.minusSeconds(1));
+        job.setExecutionToken(staleToken);
+        job.setCreatedAt(now);
+        job.setUpdatedAt(now);
+
+        Long jobId = jobRepository.saveAndFlush(job).getId();
+
+        when(idempotencyService.isCompleted("job-" + jobId))
+                .thenReturn(false);
+        JobAction action = mock(JobAction.class);
+        when(jobActionResolver.resolve("DEFAULT")).thenReturn(action);
+
+        jobRecoveryService.recoverExpiredJobs();
+        JobClaimService.ClaimedJob replacement =
+                jobClaimService.claimNextJob().orElseThrow();
+
+        assertThat(replacement.executionToken()).isNotEqualTo(staleToken);
+
+        jobExecutor.execute(jobId, staleToken);
+        jobExecutor.execute(jobId, replacement.executionToken());
+
+        entityManager.clear();
+        Job recoveredJob = jobRepository.findById(jobId).orElseThrow();
+
+        assertThat(recoveredJob.getStatus()).isEqualTo(JobStatus.COMPLETED);
+        assertThat(recoveredJob.getAttempt()).isEqualTo(1);
+        assertThat(recoveredJob.getExecutionToken()).isNull();
+        assertThat(jobExecutionRepository.findByJobIdOrderByStartedAtAsc(jobId))
+                .hasSize(1);
+        org.mockito.Mockito.verify(action).execute(any(Job.class));
     }
 }

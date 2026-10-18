@@ -52,6 +52,21 @@ class JobDispatchClaimIntegrationTest {
         assertThat(jobClaimService.claimDispatchedJob(dispatched.getId())).isEmpty();
     }
 
+    @Test
+    void duplicateDispatchCannotClaimCompletedJob() {
+        Job dispatched = saveJob(JobStatus.DISPATCHED);
+
+        assertThat(jobClaimService.claimDispatchedJob(dispatched.getId())).isPresent();
+
+        entityManager.clear();
+        Job completed = jobRepository.findById(dispatched.getId()).orElseThrow();
+        completed.setStatus(JobStatus.COMPLETED);
+        completed.setCompletedAt(LocalDateTime.now());
+        jobRepository.saveAndFlush(completed);
+
+        assertThat(jobClaimService.claimDispatchedJob(completed.getId())).isEmpty();
+    }
+
     private Job saveJob(JobStatus status) {
         LocalDateTime now = LocalDateTime.now();
         Job job = new Job();
