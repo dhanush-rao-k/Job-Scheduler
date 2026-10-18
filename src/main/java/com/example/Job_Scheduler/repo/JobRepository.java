@@ -57,6 +57,21 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 Optional<Job> findNextDueJobForUpdateSkipLocked(
         @Param("now") LocalDateTime now
 );
+
+@Query(value = """
+SELECT *
+FROM jobs
+WHERE status = 'PENDING'
+  AND run_at <= :now
+ORDER BY run_at, id
+LIMIT :batchSize
+FOR UPDATE SKIP LOCKED
+""", nativeQuery = true)
+List<Job> findDuePendingJobsForUpdateSkipLocked(
+    @Param("now") LocalDateTime now,
+    @Param("batchSize") int batchSize
+);
+
     @Modifying
     @Query("""
         UPDATE Job j
