@@ -1,6 +1,7 @@
 package com.example.Job_Scheduler.service;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -85,6 +86,27 @@ void resolve_shouldReturnWebhookActionForWebhookType() {
         assertSame(
                 emailJobAction,
                 resolver.resolve("EMAIL")
+        );
+    }
+
+    @Test
+    void resolve_shouldRejectUnsupportedType() {
+        JobActionResolver resolver =
+                new JobActionResolver(
+                        defaultJobAction,
+                        emailJobAction,
+                        httpJobAction,
+                        webhookJobAction
+                );
+
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> resolver.resolve("DEMO")
+        );
+
+        org.junit.jupiter.api.Assertions.assertEquals(
+                "Unsupported job type: DEMO",
+                exception.getMessage()
         );
     }
 }

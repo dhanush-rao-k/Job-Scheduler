@@ -18,6 +18,7 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -262,6 +263,54 @@ void execute_shouldMarkJobFailedWhenFinalAttemptFails() {
                 verify(jobRepository).finishOwnedExecution(
                         eq(jobId), eq(executionToken), eq(JobStatus.RUNNING), eq(JobStatus.FAILED),
                         eq(3), eq(null), any(), eq("execution failed"), any());
+}
+
+@Test
+void execute_shouldRecordUnsupportedTypeAndExhaustRetries() {
+    Long jobId = 1L;
+    UUID executionToken = UUID.randomUUID();
+
+    Job job = new Job();
+    job.setId(jobId);
+    job.setType("DEMO");
+    job.setStatus(JobStatus.RUNNING);
+    job.setAttempt(2);
+    job.setMaxAttempts(3);
+    job.setExecutionToken(executionToken);
+
+    when(jobRepository.findById(jobId)).thenReturn(Optional.of(job));
+    when(idempotencyService.isCompleted("job-1")).thenReturn(false);
+    when(jobActionResolver.resolve("DEMO"))
+            .thenThrow(new IllegalArgumentException("Unsupported job type: DEMO"));
+
+    JobExecution execution =
+            new JobExecution(jobId, 3, ExecutionStatus.RUNNING, LocalDateTime.now());
+    when(jobExecutionService.startExecution(jobId, 3)).thenReturn(execution);
+
+    jobExecutor.execute(jobId, executionToken);
+
+    assertEquals(3, job.getAttempt());
+    assertEquals(JobStatus.FAILED, job.getStatus());
+    assertNotNull(job.getCompletedAt());
+    assertEquals("Unsupported job type: DEMO", job.getErrorMessage());
+
+    verify(jobExecutionService).failExecution(
+            execution,
+            "Unsupported job type: DEMO"
+    );
+    verify(jobExecutionService, never()).completeExecution(any(JobExecution.class));
+    verify(backoffCalculator, never()).calculateBackoff(anyInt());
+    verify(jobRepository).finishOwnedExecution(
+            eq(jobId),
+            eq(executionToken),
+            eq(JobStatus.RUNNING),
+            eq(JobStatus.FAILED),
+            eq(3),
+            eq(null),
+            any(),
+            eq("Unsupported job type: DEMO"),
+            any()
+    );
 }
 
 @Test

@@ -23,6 +23,7 @@ A Spring Boot job scheduling service backed by PostgreSQL. The project focuses o
 - **Leases and recovery:** Renew execution leases and recover jobs whose leases expire.
 - **Retries:** Retry failed executions with backoff, subject to the configured attempt limit.
 - **Execution tracking:** Record execution attempts and outcomes.
+- **Supported job types:** `DEFAULT`, `EMAIL`, `HTTP`, and `WEBHOOK`.
 - **Automated verification:** Run tests through Maven and GitHub Actions.
 
 ## Architecture
@@ -38,6 +39,10 @@ The main execution flow is:
 7. Failed jobs can be retried according to the configured retry policy.
 
 PostgreSQL remains the source of truth for job state.
+
+Job types are resolved by `JobActionResolver`. Unknown values, including
+`DEMO`, fail as unsupported job types; use `DEFAULT` for a deterministic
+demonstration job.
 
 ## Prerequisites
 
