@@ -57,6 +57,9 @@ class OutboxEventClaimServiceConcurrencyTest {
             assertThat(secondClaim).isNotNull();
             assertThat(firstClaim.id()).isNotEqualTo(secondClaim.id());
             assertThat(outboxEventRepository.findAll())
+                    .filteredOn(event -> event.getAggregateId() == 1L
+                            || event.getAggregateId() == 2L)
+                    .hasSize(2)
                     .allSatisfy(event -> assertThat(event.getClaimToken()).isNotNull());
         } finally {
             workers.shutdownNow();

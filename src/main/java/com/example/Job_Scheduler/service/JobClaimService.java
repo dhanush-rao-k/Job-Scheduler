@@ -48,5 +48,27 @@ public class JobClaimService {
         );
     }
 
+    @Transactional
+    public Optional<ClaimedJob> claimDispatchedJob(Long jobId) {
+        LocalDateTime now = LocalDateTime.now();
+        Optional<Job> candidate =
+                jobRepository.findByIdAndStatusForUpdate(jobId, JobStatus.DISPATCHED);
+
+        if (candidate.isEmpty()) {
+            return Optional.empty();
+        }
+
+        Job job = candidate.get();
+        UUID executionToken = UUID.randomUUID();
+        job.setStatus(JobStatus.RUNNING);
+        job.setStartedAt(now);
+        job.setUpdatedAt(now);
+        job.setLeaseUntil(now.plusMinutes(LEASE_MINUTES));
+        job.setExecutionToken(executionToken);
+        jobRepository.saveAndFlush(job);
+
+        return Optional.of(new ClaimedJob(job.getId(), executionToken));
+    }
+
     public record ClaimedJob(Long jobId, UUID executionToken) {}
 }

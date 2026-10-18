@@ -92,7 +92,9 @@ class JobDispatchServiceTest {
         assertThat(jobDispatchService.dispatchDueJobs()).isEqualTo(1);
         assertThat(jobDispatchService.dispatchDueJobs()).isZero();
 
-        assertThat(outboxEventRepository.findAll()).hasSize(1);
+        assertThat(outboxEventRepository.findAll())
+                .filteredOn(event -> event.getAggregateId().equals(job.getId()))
+                .hasSize(1);
     }
 
     @Test

@@ -7,13 +7,27 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
+import jakarta.persistence.LockModeType;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface JobRepository extends JpaRepository<Job, Long> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+        SELECT j
+        FROM Job j
+        WHERE j.id = :jobId
+          AND j.status = :status
+        """)
+    Optional<Job> findByIdAndStatusForUpdate(
+        @Param("jobId") Long jobId,
+        @Param("status") JobStatus status
+    );
 
     List<Job> findByStatusAndRunAtLessThanEqual(JobStatus status, LocalDateTime time);
     List<Job> findByStatusAndLeaseUntilBefore(JobStatus status,LocalDateTime time);
