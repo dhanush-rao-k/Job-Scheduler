@@ -2,8 +2,14 @@ package com.example.Job_Scheduler.service;
 
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Component
+@ConditionalOnProperty(
+        name = "job.scheduler.enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 public class JobScheduler {
 
     private final JobDispatchService jobDispatchService;

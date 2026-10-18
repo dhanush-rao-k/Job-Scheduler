@@ -11,8 +11,14 @@ import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 @Service
+@ConditionalOnProperty(
+        name = "outbox.publisher.enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 public class OutboxPublisher {
 
     static final String TOPIC = "job-dispatch";

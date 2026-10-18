@@ -7,11 +7,17 @@ import java.util.Optional;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.support.Acknowledgment;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
+@ConditionalOnProperty(
+        name = "job.dispatch.consumer.enabled",
+        havingValue = "true",
+        matchIfMissing = true
+)
 public class JobDispatchConsumer {
 
     private final ObjectMapper objectMapper;

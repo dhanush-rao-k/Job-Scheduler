@@ -23,9 +23,6 @@ import jakarta.persistence.PersistenceContext;
 class JobSchedulerIntegrationTest {
 
     @Autowired
-    private JobScheduler jobScheduler;
-
-    @Autowired
     private JobRepository jobRepository;
 
     @Autowired
