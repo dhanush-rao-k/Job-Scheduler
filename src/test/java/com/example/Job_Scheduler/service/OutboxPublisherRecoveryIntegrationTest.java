@@ -48,7 +48,7 @@ class OutboxPublisherRecoveryIntegrationTest {
                 "JOB_DISPATCH_REQUESTED",
                 "{\"jobId\":991}",
                 OutboxEventStatus.PENDING,
-                LocalDateTime.now().minusMinutes(1)
+                LocalDateTime.now().minusYears(10)
         ));
         eventId = event.getId();
 
