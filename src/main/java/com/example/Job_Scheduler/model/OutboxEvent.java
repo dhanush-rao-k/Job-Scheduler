@@ -47,6 +47,12 @@ public class OutboxEvent {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
+    @Column(name = "claim_token")
+    private UUID claimToken;
+
+    @Column(name = "claim_until")
+    private LocalDateTime claimUntil;
+
     public OutboxEvent() {
     }
 
@@ -148,5 +154,21 @@ public class OutboxEvent {
 
     public void setLastError(String lastError) {
         this.lastError = lastError;
+    }
+
+    public UUID getClaimToken() {
+        return claimToken;
+    }
+
+    public void setClaimToken(UUID claimToken) {
+        this.claimToken = claimToken;
+    }
+
+    public LocalDateTime getClaimUntil() {
+        return claimUntil;
+    }
+
+    public void setClaimUntil(LocalDateTime claimUntil) {
+        this.claimUntil = claimUntil;
     }
 }
